@@ -1,5 +1,5 @@
 import { Component } from 'react';
-import axios from 'axios';
+import { fatchImages } from './service/fatch-service';
 import Searchbar from './Searchbar';
 import ImageGallery from './ImageGallery';
 import Button from './Button';
@@ -14,78 +14,108 @@ export class App extends Component {
     loading: false,
     error: null,
     modalOpen: false,
-    imageModal: ''
+    imageModal: '',
+    imageDescription: '',
+    isEmpty: false,
+    showBtn: false,
   };
 
-  componentDidMount() {
-    this.fetchImages();
-  }
-
   componentDidUpdate(prevProps, prevState) {
-    if (prevState.query !== this.state.query) {
-      this.resetPage();
-      this.fetchImages();
+    const { query, page } = this.state;
+    if (!query) return;
+    if (prevState.query !== query || prevState.page !== page) {
+      this.setState({ loading: true });
+      const perPage = 12;
+      fatchImages(query, page, perPage)
+        .then(({ hits, totalHits }) => {
+          if (hits.length === 0) {
+            this.setState({ isEmpty: true });
+          }
+          this.setState(prevState => ({
+            images: [...prevState.images, ...hits],
+            showBtn: this.state.page < Math.ceil(totalHits / 12),
+          }));
+        })
+        .catch(error => {
+          this.setState({ error: error.message });
+        })
+        .finally(this.setState({ loading: false }));
     }
   }
 
   handleSearch = query => {
-    this.setState({ query });
-  };
-
-  fetchImages = async () => {
-    const { query, page } = this.state;
-    if (!query) return;
-
-    try {
-      this.setState({ loading: true });
-      const perPage = 12;
-      const response = await axios.get(
-        `https://pixabay.com/api/?key=37757001-b13a3b98fcf42c50e87778634&q=${query}&page=${page}&per_page=${perPage}`
-      );
-      this.setState(prevState => ({
-        images:
-          page === 1
-            ? response.data.hits
-            : [...prevState.images, ...response.data.hits],
-      }));
-    } catch (error) {
-      console.error('Error fetching images:', error);
-    } finally {
-      this.setState({ loading: false });
-    }
+    this.setState({
+      query: '',
+      images: [],
+      page: 1,
+      isEmpty: false,
+      showBtn: false,
+      error: null,
+    });
+    this.setState({ query: query });
   };
 
   handleLoadMore = () => {
-    this.setState((prevState) => ({ page: prevState.page + 1 }), () => {
-      this.fetchImages();
+    this.setState(prevState => ({ page: prevState.page + 1 }));
+  };
+
+  handleModalOpen = (largeImageURL, imageDescription) => {
+    this.setState({
+      imageModal: largeImageURL,
+      imageDescription: imageDescription,
+      modalOpen: true,
     });
   };
 
-  resetPage = () => {
-   this.setState({ page: 1, images: [] });
-  };
-
-  handleModalOpen = (largeImageURL) => {
-    this.setState({ imageModal: largeImageURL, modalOpen: true });
-     };
-
   handleModalClose = () => {
-    this.setState({ imageModal: '', modalOpen: false });
+    this.setState({ imageModal: '', imageDescription: '', modalOpen: false });
   };
 
   render() {
-    const { images, loading, modalOpen, imageModal } = this.state;
+    const {
+      images,
+      modalOpen,
+      imageModal,
+      imageDescription,
+      showBtn,
+      error,
+      isEmpty,
+      loading,
+    } = this.state;
 
     return (
       <div className="App">
         <Searchbar onSearch={this.handleSearch} />
-        {loading && <Loader />}
-        {images.length > 0 && (
-          <>
-            <ImageGallery images={images} onImageClick={this.handleModalOpen} /> <Button onLoadMore={this.handleLoadMore} />
-          </>
+        <ImageGallery images={images} onModalOpen={this.handleModalOpen} />
+        {showBtn && <Button onLoadMore={this.handleLoadMore} />}
+        {isEmpty && (
+          <p
+            style={{
+              fontSize: 'xx-large',
+              textAlign: 'center',
+            }}
+          >
+            Sorry. There are no images ... 😭
+          </p>
         )}
-        {modalOpen && <Modal image={imageModal} onModalClose={this.handleModalClose}/>}
+        {error && (
+          <p
+            style={{
+              fontSize: 'xx-large',
+              textAlign: 'center',
+            }}
+          >
+            Sorry. {error} 😭
+          </p>
+        )}
+        {loading && <Loader />}
+        {modalOpen && (
+          <Modal
+            image={imageModal}
+            imageDescription={imageDescription}
+            onModalClose={this.handleModalClose}
+          />
+        )}
       </div>
     );
   }

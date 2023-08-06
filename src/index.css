@@ -20,7 +20,7 @@ body {
   background-color: #fff;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  }
+}
 
 img {
   display: block;
@@ -34,4 +34,4 @@ img {
   grid-gap: 16px;
   padding-bottom: 24px;
   border-color: blue;
- }
+}
