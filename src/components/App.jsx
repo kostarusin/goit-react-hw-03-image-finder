@@ -22,7 +22,6 @@ export class App extends Component {
 
   componentDidUpdate(prevProps, prevState) {
     const { query, page } = this.state;
-    if (!query) return;
     if (prevState.query !== query || prevState.page !== page) {
       this.setState({ loading: true });
       const perPage = 12;
@@ -30,6 +29,7 @@ export class App extends Component {
         .then(({ hits, totalHits }) => {
           if (hits.length === 0) {
             this.setState({ isEmpty: true });
+            return;
           }
           this.setState(prevState => ({
             images: [...prevState.images, ...hits],
@@ -45,14 +45,13 @@ export class App extends Component {
 
   handleSearch = query => {
     this.setState({
-      query: '',
+      query,
       images: [],
       page: 1,
       isEmpty: false,
       showBtn: false,
       error: null,
     });
-    this.setState({ query: query });
   };
 
   handleLoadMore = () => {
@@ -67,7 +66,7 @@ export class App extends Component {
     });
   };
 
-  handleModalClose = () => {
+  handleModalClose = event => {
     this.setState({ imageModal: '', imageDescription: '', modalOpen: false });
   };
 
